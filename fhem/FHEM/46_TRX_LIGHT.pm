@@ -1,4 +1,4 @@
-# $Id$
+# $Id: 46_TRX_LIGHT.pm 6225 2014-07-09 18:36:02Z wherzig $
 ##############################################################################
 #
 #     46_TRX_LIGHT.pm
@@ -139,8 +139,8 @@ my %light_device_commands = (	# HEXSTRING => commands
 	0x1905 => [ "down", "up", "stop"], # Media Mount
 	0x1906 => [ "open", "close", "stop", "confirm"], # DC/RMF/Yooda
 	0x1907 => [ "open", "close", "stop", "confirm_pair"], # Forest
-        0x1A00 => [ "stop", "up", "", "down", "", "", "", "program"], # RTS RFY
-        0x1A01 => [ "stop", "up", "", "down", "", "", "", "program"], # RTS RFY ext
+        0x1A00 => [ "stop", "up", "", "down", "", "", "", "program", "", "", "", "", "", "", "", "up_<0.5_seconds", "down_<0.5_seconds", "up_>2_seconds", "down_>2_seconds"], # RTS RFY
+        0x1A01 => [ "stop", "up", "", "down", "", "", "", "program", "", "", "", "", "", "", "", "up_<0.5_seconds", "down_<0.5_seconds", "up_>2_seconds", "down_>2_seconds"], # RTS RFY ext
 );
 
 my %light_device_c2b;        # DEVICE_TYPE->hash (reverse of light_device_codes)

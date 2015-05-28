@@ -1,4 +1,4 @@
-# $Id$
+# $Id: 46_TRX_SECURITY.pm 5616 2014-04-23 20:51:14Z wherzig $
 ##############################################################################
 #
 #     46_TRX_SECURITY.pm
@@ -238,14 +238,16 @@ TRX_SECURITY_Define($$)
   $type = uc($type);
 
   my $my_type;
-  if ($type eq "WD18" || $type eq "GD18" ) {
+  #if ($type eq "WD18" || $type eq "GD18" ) {
+  if ($type eq "WD18" || $type eq "GD18" || $type eq "SD18" || $type eq "COD18") {
 	$my_type = "DS10A"; # device will be received as DS10A	
   } else {
 	$my_type = $type;
   }
   my $device_name = "TRX".$DOT.$my_type.$DOT.$deviceid;
 
-  if ($type ne "DS10A" && $type ne "SD90" && $type ne "MS10A" && $type ne "MS14A" && $type ne "KR18" && $type ne "KD101" && $type ne "VISONIC_WINDOW" && $type ne "VISONIC_MOTION" && $type ne "VISONIC_WINDOW_AUX" && $type ne "VISONIC_REMOTE" && $type ne "MEIANTECH" && $type ne "SA30" && $type ne "GD18" && $type ne "WD18") {
+  #if ($type ne "DS10A" && $type ne "SD90" && $type ne "MS10A" && $type ne "MS14A" && $type ne "KR18" && $type ne "KD101" && $type ne "VISONIC_WINDOW" && $type ne "VISONIC_MOTION" && $type ne "VISONIC_WINDOW_AUX" && $type ne "VISONIC_REMOTE" && $type ne "MEIANTECH" && $type ne "SA30" && $type ne "GD18" && $type ne "WD18") {
+  if ($type ne "DS10A" && $type ne "SD90" && $type ne "MS10A" && $type ne "MS14A" && $type ne "KR18" && $type ne "KD101" && $type ne "VISONIC_WINDOW" && $type ne "VISONIC_MOTION" && $type ne "VISONIC_WINDOW_AUX" && $type ne "VISONIC_REMOTE" && $type ne "MEIANTECH" && $type ne "SA30" && $type ne "GD18" && $type ne "WD18" && $type ne "SD18" && $type ne "COD18") {
   	Log3 $hash, 1,"TRX_SECURITY_Define() wrong type: $type";
   	return "TRX_SECURITY: wrong type: $type";
   }

@@ -1,4 +1,4 @@
-# $Id$
+# $Id: 46_TRX_WEATHER.pm 5719 2014-05-01 19:18:38Z wherzig $
 ##############################################################################
 #
 # 46_TRX_WEATHER.pm
@@ -6,6 +6,9 @@
 #
 # The following devices are implemented to be received:
 #
+# thermostat sensors (THERMOSTAT):
+# * "TH10"	is XDOM TH10
+# * "TLX7506"	is Digimax TLX7506
 # temperature sensors (TEMP):
 # * "THR128" 	is THR128/138, THC138
 # * "THGR132N" 	is THC238/268,THN132,THWR288,THRN122,THN122,AW129/131
@@ -106,7 +109,7 @@ use strict;
 use warnings;
 
 # Hex-Debugging into READING hexline? YES = 1, NO = 0
-my $TRX_HEX_debug = 0;
+my $TRX_HEX_debug = 1;
 
 my $time_old = 0;
 my $trx_rssi;
@@ -116,7 +119,7 @@ TRX_WEATHER_Initialize($)
 {
   my ($hash) = @_;
 
-  $hash->{Match}     = "^..(50|51|52|54|55|56|57|58|5a|5c|5d).*";
+  $hash->{Match}     = "^..(40|50|51|52|54|55|56|57|58|5a|5c|5d).*";
   $hash->{DefFn}     = "TRX_WEATHER_Define";
   $hash->{UndefFn}   = "TRX_WEATHER_Undef";
   $hash->{ParseFn}   = "TRX_WEATHER_Parse";
@@ -171,6 +174,8 @@ TRX_WEATHER_Undef($$)
 
 my %types =
   (
+   # THERMOSTAT
+   0x4009 => { part => 'THERMOSTAT', method => \&TRX_WEATHER_common_therm, },
    # TEMP
    0x5008 => { part => 'TEMP', method => \&TRX_WEATHER_common_temp, },
    # HYDRO
@@ -430,6 +435,101 @@ sub TRX_WEATHER_common_anemometer {
   return @res;
 }
 
+
+# -----------------------------
+sub TRX_WEATHER_common_therm {
+  my $type = shift;
+  my $longids = shift;
+  my $bytes = shift;
+
+  my $subtype = sprintf "%02x", $bytes->[1];
+  my $dev_type;
+
+  my %devname =
+    (	# HEXSTRING => "NAME"
+	0x00 => "TLX7506",
+	0x01 => "TH10", 
+  );
+
+  if (exists $devname{$bytes->[1]}) {
+  	$dev_type = $devname{$bytes->[1]};
+  } else {
+  	Log3 undef, 3, "TRX_WEATHER: common_therm error undefined subtype=$subtype";
+  	my @res = ();
+  	return @res;
+  }
+
+  #my $seqnbr = sprintf "%02x", $bytes->[2];
+
+  my $dev_str = $dev_type;
+  if (TRX_WEATHER_use_longid($longids,$dev_type)) {
+  	$dev_str .= $DOT.sprintf("%02x", $bytes->[3]);
+  }
+  if ($bytes->[4] > 0) {
+  	$dev_str .= $DOT.sprintf("%d", $bytes->[4]);
+  }
+
+  my @res = ();
+
+  # hexline debugging
+  if ($TRX_HEX_debug) {
+    my $hexline = ""; for (my $i=0;$i<@$bytes;$i++) { $hexline .= sprintf("%02x",$bytes->[$i]);} 
+    push @res, { device => $dev_str, type => 'hexline', current => $hexline, units => 'hex', };
+  }
+
+  #TRX_WEATHER_temperature($bytes, $dev_str, \@res, 5); 
+  #TRX_WEATHER_simple_battery($bytes, $dev_str, \@res, 7);
+
+  my $temp = ($bytes->[5]);
+  if ($temp) {
+    push @res, {
+	device => $dev_str,
+	type => 'temp',
+	current => $temp,
+	units => 'Grad Celsius'
+    }
+  }
+
+  my $setpoint =($bytes->[6]);
+  if ($setpoint) {
+      push @res, {
+                device => $dev_str,
+                type => 'setpoint',
+                current => $setpoint,
+                units => 'Grad Celsius'
+        }
+  }
+
+  my $demand;
+  my $t_status = ($bytes->[7] & 0x03);
+  if ($t_status == 0) { $demand = 'n/a'}
+  elsif ($t_status == 1) { $demand = 'on'}
+  elsif ($t_status == 2) { $demand = 'off'}
+  elsif ($t_status == 3) { $demand = 'initializing'}
+  else {
+	$demand = sprintf("unknown-%02x",$t_status);
+  }
+
+  Log3 undef, 3, "TRX_WEATHER: demand = $bytes->[7] $t_status $demand";
+  push @res, {
+	device => $dev_str,
+	type => 'demand',
+	current => sprintf("%s",$demand),
+  };
+
+  #my $t_mode = ($bytes->[7] & 0x01);
+
+  my $rssi = ($bytes->[8] & 0xf0) >> 4;
+
+  if ($trx_rssi == 1) {
+        push @res, {
+                device => $dev_str,
+                type => 'rssi',
+                current => sprintf("%d",$rssi),
+        };
+  }
+  return @res;
+}
 
 # -----------------------------
 sub TRX_WEATHER_common_temp {
@@ -1535,6 +1635,25 @@ TRX_WEATHER_Parse($$)
 			$sensor = "time";			
 			readingsBulkUpdate($def, $sensor, $i->{current});
 	}
+	elsif ($i->{type} eq "setpoint") { 
+			Log3 $name, 5, "TRX_WEATHER: name=$name device=$device_name setpoint ".$i->{current}." ".$i->{units};
+			$val .= "SP: ".$i->{current}." ";
+
+			$sensor = "setpoint";			
+			readingsBulkUpdate($def, $sensor, $i->{current});
+  	} 
+	elsif ($i->{type} eq "demand") { 
+			Log3 $name, 5, "TRX_WEATHER: name=$name device=$device_name state ".$i->{current};
+			if ($val eq "") { 
+				$val = "$i->{current}"; 
+			}
+			else {
+				$val .= "D: ".$i->{current}." ";
+			}
+
+			$sensor = "demand";			
+			readingsBulkUpdate($def, $sensor, $i->{current});
+	}
 	else { 
 		Log3 $name, 1, "TRX_WEATHER: name=$name device=$device_name UNKNOWN Type: ".$i->{type}." Value: ".$i->{current} 
 	}
@@ -1574,7 +1693,7 @@ TRX_WEATHER_Parse($$)
     <br>
     <code>&lt;deviceid&gt;</code> 
     <ul>
-	is the device identifier of the sensor. It consists of the sensors name and (only if the attribute longids is set of the RFXtrx433) an a one byte hex string (00-ff) that identifies the sensor. If an sensor uses an switch to set an additional is then this is also added. The define statement with the deviceid is generated automatically by autocreate. The following sensor names are used: <br>
+	is the device identifier of the sensor. It consists of the sensors name and (only if the attribute longids is set of the RFXtrx433) an a one byte hex string (00-ff) that identifies the sensor. If a sensor uses a switch to set an additional is then this is also added. The define statement with the deviceid is generated automatically by autocreate. The following sensor names are used: <br>
 	"THR128" (for THR128/138, THC138),<br>
 	"THGR132N" (for THC238/268,THN132,THWR288,THRN122,THN122,AW129/131),<br>
 	"THWR800", <br>
@@ -1598,6 +1717,8 @@ TRX_WEATHER_Parse($$)
 	"TFA_WIND" (for TFA wind sensor),<br>
 	"BWR101" (for Oregon Scientific BWR101),<br>
 	"GR101" (for Oregon Scientific GR101)
+	"TLX7506" (for Digimax TLX7506),<br>
+	"TH10" (for Digimax with short format),<br>
     </ul>
     <br>
     Example: <br>

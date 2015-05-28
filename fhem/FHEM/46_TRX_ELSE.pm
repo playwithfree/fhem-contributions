@@ -26,7 +26,7 @@
 # 4: log unknown protocols
 # 5: log decoding hexlines for debugging
 #
-# $Id$ 
+# $Id: 46_TRX_ELSE.pm 5719 2014-05-01 19:18:38Z wherzig $ 
 package main;
 
 use strict;
@@ -41,7 +41,7 @@ TRX_ELSE_Initialize($)
 {
   my ($hash) = @_;
 
-  $hash->{Match}     = "^..(0[0-f]|1[a-f]|2[1-f]|3[0-f]|4[0-f]|53|59|5e|5f|[6-f][0-f]).*";
+  $hash->{Match}     = "^..(0[0-f]|1[a-f]|2[1-f]|3[0-f]|4[1-f]|53|59|5e|5f|[6-f][0-f]).*";
   $hash->{DefFn}     = "TRX_ELSE_Define";
   $hash->{UndefFn}   = "TRX_ELSE_Undef";
   $hash->{ParseFn}   = "TRX_ELSE_Parse";
